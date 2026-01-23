@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Character Sheet</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap');
+        
+        :root {
+            --main-title: "Brightwing";
+            --inventory-title: "Miscellaneous";
+            --sheet-url: "https://docs.google.com/spreadsheets/d/1fCqjePjNSEEvz8DTyXGTjlUlyR5VALe3tjYr8BgJFBo/edit";
+            --link-label: "Tracker and Excerpts";
+            
+            --cyan: #00f0ff;
+            --green: #00ff88;
+            --dark-bg: #050508;
+            --card-bg: rgba(0, 20, 30, 0.95);
+            --hover-bg: rgba(0, 240, 255, 0.1);
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--dark-bg);
+            color: var(--cyan);
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: 
+                linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.1) 2px, rgba(0, 0, 0, 0.1) 4px);
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0.3;
+        }
+        
+        .character-sheet { max-width: 1400px; margin: 0 auto; position: relative; z-index: 1; }
+        
+        h1 {
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.4rem, 4vw, 2.5rem);
+            font-weight: 900;
+            margin-bottom: 25px;
+            text-transform: uppercase;
+            letter-spacing: clamp(4px, 1vw, 8px);
+            text-shadow: 0 0 10px var(--cyan), 0 0 20px var(--cyan), 0 0 40px var(--cyan);
+            animation: titleGlow 3s ease-in-out infinite alternate;
+        }
+        
+        @keyframes titleGlow {
+            to { text-shadow: 0 0 15px var(--cyan), 0 0 30px var(--cyan), 0 0 60px var(--cyan); filter: brightness(1.2); }
+        }
+        
+        .loading, .error { 
+            padding: 40px;
+            text-align: center;
+            border: 1px solid var(--cyan);
+            background: rgba(0, 240, 255, 0.05);
+            border-radius: 4px;
+            margin: 20px;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+            font-size: 1.1rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .loading { animation: loadingPulse 2s ease-in-out infinite; }
+        @keyframes loadingPulse { 50% { opacity: 0.6; } }
+        
+        .error {
+            border-color: #ff3366;
+            color: #ff3366;
+            background: rgba(255, 51, 102, 0.05);
+            animation: none;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 240, 255, 0.3);
+            border-top-color: var(--cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .stats-container {
+            background: linear-gradient(135deg, var(--card-bg) 0%, rgba(0, 10, 20, 0.98) 100%);
+            border: 1px solid var(--cyan);
+            border-radius: 4px;
+            margin-bottom: 25px;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.15);
+            overflow: hidden;
+        }
+        
+        .section-header {
+            padding: clamp(12px, 3vw, 20px) clamp(15px, 4vw, 25px);
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.1rem, 2vw, 1.3rem);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: clamp(2px, 0.5vw, 3px);
+            background: rgba(0, 240, 255, 0.05);
+            border-bottom: 1px solid rgba(0, 240, 255, 0.3);
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            position: relative;
+            width: 100%;
+            text-align: left;
+            border: none;
+            color: var(--cyan);
+        }
+        
+        .section-header:hover {
+            background: var(--hover-bg);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+        }
+        
+        .section-header::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 60px;
+            height: 2px;
+            background: var(--cyan);
+            box-shadow: 0 0 10px var(--cyan);
+        }
+        
+        .section-arrow {
+            display: inline-block;
+            transition: transform 0.3s ease;
+            margin-right: clamp(15px, 3vw, 30px);
+            font-size: 1.3em;
+            width: 25px;
+            text-align: center;
+            font-weight: 700;
+        }
+        
+        .section-arrow.open { transform: rotate(90deg); }
+        
+        .section-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+        }
+        
+        .section-content.open { max-height: 5000px; }
+        
+        .stat-item { border-bottom: 1px solid rgba(0, 240, 255, 0.2); }
+        .stat-item:last-child { border-bottom: none; }
+        
+        .stat-textbox {
+            padding: clamp(12px, 2vw, 15px) clamp(15px, 3vw, 25px);
+            font-weight: 500;
+            color: #e0f7ff;
+            background: rgba(0, 20, 40, 0.6);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+            min-height: 50px;
+        }
+        
+        .stat-textbox.clickable {
+            cursor: pointer;
+            border-left: 3px solid var(--green);
+            background: rgba(0, 255, 136, 0.05);
+        }
+        
+        .stat-textbox.clickable:hover {
+            background: rgba(0, 255, 136, 0.1);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+        }
+        
+        .stat-name { 
+            flex: 1;
+            font-weight: 600;
+            font-size: 1.1rem;
+            letter-spacing: 0.5px;
+            min-width: 0;
+        }
+        
+        .stat-value {
+            padding-left: 15px;
+            color: var(--green);
+            text-align: right;
+            min-width: 60px;
+            flex-shrink: 0;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+        }
+        
+        .stat-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+            background: rgba(0, 15, 25, 0.9);
+        }
+
+        .stat-item.active .stat-details {
+            max-height: 5000px;
+            border-top: 1px solid rgba(0, 240, 255, 0.1);
+        }
+
+        .details-content {
+            padding: 20px 25px;
+            color: #e0f7ff;
+            line-height: 1.8;
+            font-size: 1.1rem;
+            white-space: pre-line;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .attributes-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 25px;
+        }
+        
+        .attribute-column {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .attribute-item {
+            padding: 15px;
+            background: rgba(0, 20, 40, 0.6);
+            border-radius: 2px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            cursor: default;
+            transition: background 0.2s;
+        }
+        
+        .attribute-item:hover { background: rgba(0, 30, 60, 0.7); }
+        
+        .attribute-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .attribute-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            font-family: 'Orbitron', monospace;
+            letter-spacing: 1px;
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .red { color: #ff6b6b; }
+        .green { color: #51cf66; }
+        .blue { color: #4dabf7; }
+        .purple { color: #cc5de8; }
+        .yellow { color: #ffd43b; }
+        
+        .attribute-value {
+            font-weight: 700;
+            font-size: 1.2rem;
+            font-family: 'Orbitron', monospace;
+            color: var(--green);
+            flex-shrink: 0;
+            margin-left: 10px;
+        }
+        
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 4px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            margin-top: 8px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+            animation: shimmer 2s infinite;
+        }
+        
+        .progress-bar.red { background: linear-gradient(90deg, #ff6b6b, #ff8787, #ff6b6b); border-color: rgba(255, 107, 107, 0.3); }
+        .progress-bar.green { background: linear-gradient(90deg, #51cf66, #69db7c, #51cf66); border-color: rgba(81, 207, 102, 0.3); }
+        .progress-bar.blue { background: linear-gradient(90deg, #4dabf7, #74c0fc, #4dabf7); border-color: rgba(77, 171, 247, 0.3); }
+        .progress-bar.purple { background: linear-gradient(90deg, #cc5de8, #e599f7, #cc5de8); border-color: rgba(204, 93, 232, 0.3); }
+        .progress-bar.yellow { background: linear-gradient(90deg, #ffd43b, #ffec99, #ffd43b); border-color: rgba(255, 212, 59, 0.3); }
+        
+        @keyframes shimmer {
+            to { transform: translateX(200%); }
+        }
+
+        .two-column-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1px;
+            background: rgba(0, 240, 255, 0.1);
+        }
+        
+        .two-column-grid .stat-item { background: rgba(0, 20, 40, 0.6); }
+        
+        .sheet-link-item {
+            background: rgba(0, 30, 60, 0.8) !important;
+            border-left: 3px solid var(--cyan) !important;
+        }
+        
+        .sheet-link-item:hover { background: rgba(0, 40, 80, 0.9) !important; }
+        .sheet-link-text { color: var(--cyan) !important; font-style: italic; }
+        
+        @media (max-width: 768px) {
+            body { padding: 15px; }
+            .attributes-grid { grid-template-columns: 1fr; gap: 15px; padding: 15px; }
+            .two-column-grid { grid-template-columns: 1fr; }
+            .stat-textbox { padding: 12px 15px; min-height: 45px; }
+            .attribute-name, .stat-name { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="character-sheet">
+        <h1 id="main-title"></h1>
+        <div id="loading" class="loading"><div class="loading-spinner"></div><span id="loading-text">Loading...</span></div>
+        <div id="error" class="error" style="display: none;"></div>
+        <div id="stats-container" class="stats-container"></div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            baseSheetId: '1fCqjePjNSEEvz8DTyXGTjlUlyR5VALe3tjYr8BgJFBo',
+            gids: {
+                detailed: '456052044',
+                attributes: '1256324159',
+                skills: '1138522272',
+                abilities: '1405420825',
+                items: '586277166'
+            },
+            attributeLayout: {
+                left: [
+                    { name: 'Strength', color: 'red', aliases: ['STR', 'Str', 'Strength'] },
+                    { name: 'Agility', color: 'red', aliases: ['AGI', 'Agi', 'Agility'] },
+                    { name: 'Constitution', color: 'red', aliases: ['CON', 'Con', 'Constitution'] },
+                    { name: 'Intelligence', color: 'blue', aliases: ['INT', 'Int', 'Intelligence'] },
+                    { name: 'Wisdom', color: 'blue', aliases: ['WIS', 'Wis', 'Wisdom'] },
+                    { name: 'Wits', color: 'blue', aliases: ['WIT', 'Wit', 'Wits'] },
+                    { name: 'Willpower', color: 'yellow', aliases: ['WILL', 'Will', 'Willpower'] }
+                ],
+                right: [
+                    { name: 'Charisma', color: 'green', aliases: ['CHA', 'Cha', 'Charisma'] },
+                    { name: 'Manipulation', color: 'green', aliases: ['MNP', 'Mnp', 'Manipulation', 'MAN', 'Man'] },
+                    { name: 'Appearance', color: 'green', aliases: ['APP', 'App', 'Appearance'] },
+                    { name: 'Luck', color: 'purple', aliases: ['LUCK', 'Luck'] },
+                    { name: 'Prowess', color: 'purple', aliases: ['PRO', 'Pro', 'Prowess'] },
+                    { name: 'Protection', color: 'purple', aliases: ['PROT', 'Prot', 'Protection'] },
+                    { name: 'Dread', color: 'yellow', aliases: ['DREAD', 'Dread', 'DRD'] }
+                ]
+            }
+        };
+        
+        const getConfig = (key) => getComputedStyle(document.documentElement).getPropertyValue(`--${key}`).trim().replace(/["']/g, '');
+        
+        const parseCSV = (text) => {
+            const rows = [];
+            let row = [], field = '', inQuotes = false;
+            
+            for (const c of text) {
+                if (c === '"') inQuotes = !inQuotes;
+                else if (c === ',' && !inQuotes) { row.push(field); field = ''; }
+                else if (c === '\n' && !inQuotes) { 
+                    row.push(field);
+                    if (row.length) rows.push(row);
+                    row = []; field = '';
+                } else if (c !== '\r') field += c;
+            }
+            
+            if (field || row.length) { row.push(field); rows.push(row); }
+            return rows;
+        };
+        
+        const fetchSheet = async (url) => {
+            const proxies = [
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+                `https://corsproxy.io/?${encodeURIComponent(url)}`,
+                `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+            ];
+            
+            for (const proxyUrl of proxies) {
+                try {
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 4000);
+                    const response = await fetch(proxyUrl, { signal: controller.signal });
+                    clearTimeout(timeout);
+                    if (response.ok) return await response.text();
+                } catch { continue; }
+            }
+            throw new Error('All fetch attempts failed');
+        };
+        
+        const escapeHtml = (text) => {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        };
+        
+        const toggleSection = (header, content) => {
+            header.querySelector('.section-arrow').classList.toggle('open');
+            content.classList.toggle('open');
+        };
+        
+        const createStatItem = (name, desc, val, container) => {
+            const hasDesc = desc.trim().length > 0;
+            const item = document.createElement('div');
+            item.className = 'stat-item';
+            
+            item.innerHTML = `
+                <div class="stat-textbox ${hasDesc ? 'clickable' : ''}">
+                    <div class="stat-name">${escapeHtml(name)}</div>
+                    <div class="stat-value">${escapeHtml(val)}</div>
+                </div>
+                ${hasDesc ? `<div class="stat-details"><div class="details-content">${escapeHtml(desc.trim())}</div></div>` : ''}
+            `;
+            
+            if (hasDesc) {
+                item.querySelector('.stat-textbox').onclick = (e) => {
+                    e.stopPropagation();
+                    const active = item.classList.contains('active');
+                    container.querySelectorAll('.stat-item.active').forEach(i => {
+                        if (i !== item) i.classList.remove('active');
+                    });
+                    item.classList.toggle('active', !active);
+                };
+            }
+            
+            return item;
+        };
+        
+        const renderAttributesGrid = (data, title, placeholder) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'section-wrapper';
+            
+            const header = document.createElement('button');
+            header.className = 'section-header';
+            header.innerHTML = `<span class="section-arrow">></span>${title}`;
+            
+            const content = document.createElement('div');
+            content.className = 'section-content';
+            header.onclick = () => toggleSection(header, content);
+            
+            const csvAttributes = {};
+            data.forEach(row => {
+                const name = row[0]?.trim();
+                const value = (row.length >= 13 ? row[12] : row[row.length - 1] || '0').trim();
+                if (name) csvAttributes[name.toUpperCase()] = { displayName: name, value };
+            });
+            
+            const findAttrValue = (attrConfig) => {
+                for (const alias of attrConfig.aliases) {
+                    if (csvAttributes[alias.toUpperCase()]) return csvAttributes[alias.toUpperCase()];
+                }
+                for (const key in csvAttributes) {
+                    if (key.includes(attrConfig.name.toUpperCase().substring(0, 3))) return csvAttributes[key];
+                }
+                return { displayName: attrConfig.name, value: '0' };
+            };
+            
+            const createAttrItem = (attr) => {
+                const attrData = findAttrValue(attr);
+                const numericValue = parseFloat(attrData.value.replace(/[^0-9.]/g, '')) || 0;
+                const percentage = Math.min(Math.max(numericValue, 0), 100);
+                
+                return `<div class="attribute-item">
+                    <div class="attribute-info">
+                        <div class="attribute-name ${attr.color}">${escapeHtml(attrData.displayName)}</div>
+                        <div class="attribute-value">${escapeHtml(attrData.value)}</div>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar ${attr.color}" style="width: ${percentage}%"></div>
+                    </div>
+                </div>`;
+            };
+            
+            const grid = document.createElement('div');
+            grid.className = 'attributes-grid';
+            
+            const leftColumn = document.createElement('div');
+            leftColumn.className = 'attribute-column';
+            leftColumn.innerHTML = CONFIG.attributeLayout.left.map(createAttrItem).join('');
+            
+            const rightColumn = document.createElement('div');
+            rightColumn.className = 'attribute-column';
+            rightColumn.innerHTML = CONFIG.attributeLayout.right.map(createAttrItem).join('');
+            
+            grid.append(leftColumn, rightColumn);
+            content.appendChild(grid);
+            wrapper.append(header, content);
+            placeholder.appendChild(wrapper);
+        };
+        
+        const renderDetailed = (data, title, placeholder, twoColumns, isItems) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'section-wrapper';
+            
+            const header = document.createElement('button');
+            header.className = 'section-header';
+            header.innerHTML = `<span class="section-arrow">></span>${title}`;
+            
+            const content = document.createElement('div');
+            content.className = 'section-content';
+            header.onclick = () => toggleSection(header, content);
+            
+            const container = twoColumns ? document.createElement('div') : content;
+            if (twoColumns) {
+                container.className = 'two-column-grid';
+                content.appendChild(container);
+            }
+            
+            data.forEach(row => {
+                const [name = '', desc = '', val = ''] = row;
+                container.appendChild(createStatItem(name, desc, val, container));
+            });
+            
+            if (isItems) {
+                const sheetUrl = getConfig('sheet-url');
+                const linkLabel = getConfig('link-label');
+                
+                if (sheetUrl) {
+                    const linkItem = document.createElement('div');
+                    linkItem.className = 'stat-item sheet-link-item';
+                    linkItem.innerHTML = `
+                        <div class="stat-textbox clickable">
+                            <div class="stat-name sheet-link-text">${escapeHtml(linkLabel)}</div>
+                            <div class="stat-value">↗</div>
+                        </div>
+                    `;
+                    linkItem.querySelector('.stat-textbox').onclick = (e) => {
+                        e.stopPropagation();
+                        window.open(sheetUrl, '_blank');
+                    };
+                    container.appendChild(linkItem);
+                }
+            }
+            
+            wrapper.append(header, content);
+            placeholder.appendChild(wrapper);
+        };
+        
+        const loadAllSheets = async () => {
+            const container = document.getElementById('stats-container');
+            const loadingEl = document.getElementById('loading');
+            
+            try {
+                document.getElementById('main-title').textContent = getConfig('main-title');
+                
+                const sections = [
+                    { key: 'detailed', title: 'CHARACTER DETAILS', renderer: (d, t, p) => renderDetailed(d, t, p, true, false) },
+                    { key: 'attributes', title: 'ATTRIBUTES', renderer: renderAttributesGrid },
+                    { key: 'skills', title: 'SKILLS', renderer: (d, t, p) => renderDetailed(d, t, p, true, false) },
+                    { key: 'abilities', title: 'ATTAINMENTS', renderer: (d, t, p) => renderDetailed(d, t, p, true, false) },
+                    { key: 'items', title: getConfig('inventory-title').toUpperCase(), renderer: (d, t, p) => renderDetailed(d, t, p, true, true) }
+                ];
+                
+                sections.forEach(({ key }) => {
+                    const placeholder = document.createElement('div');
+                    placeholder.id = `section-${key}`;
+                    placeholder.className = 'section-wrapper';
+                    container.appendChild(placeholder);
+                });
+                
+                let loaded = 0;
+                const loadPromises = sections.map(async ({ key, title, renderer }, index) => {
+                    try {
+                        const url = `https://docs.google.com/spreadsheets/d/${CONFIG.baseSheetId}/export?format=csv&gid=${CONFIG.gids[key]}&range=${key === 'attributes' ? 'A2:M15' : 'A:C'}`;
+                        const csv = await fetchSheet(url);
+                        const data = parseCSV(csv);
+                        
+                        loaded++;
+                        document.getElementById('loading-text').textContent = `Loading... (${loaded}/${sections.length})`;
+                        
+                        const placeholder = document.getElementById(`section-${key}`);
+                        if (data.length && placeholder) {
+                            requestAnimationFrame(() => renderer(data, title, placeholder));
+                        }
+                    } catch (err) {
+                        console.error(`Failed to load ${key}:`, err);
+                        loaded++;
+                        const placeholder = document.getElementById(`section-${key}`);
+                        if (placeholder) placeholder.innerHTML = `<div class="error">Failed to load ${title}</div>`;
+                    }
+                });
+                
+                await Promise.all(loadPromises);
+                
+                loadingEl.style.transition = 'opacity 0.3s';
+                loadingEl.style.opacity = '0';
+                setTimeout(() => loadingEl.style.display = 'none', 300);
+                
+                requestAnimationFrame(() => {
+                    const firstSection = document.querySelector('.section-wrapper');
+                    if (firstSection) {
+                        const header = firstSection.querySelector('.section-header');
+                        const content = firstSection.querySelector('.section-content');
+                        toggleSection(header, content);
+                    }
+                });
+                
+            } catch (err) {
+                console.error('Critical error:', err);
+                loadingEl.style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = 'Failed to load character sheet';
+            }
+        };
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadAllSheets);
+        } else {
+            loadAllSheets();
+        }
+    </script>
+</body>
+</html>
